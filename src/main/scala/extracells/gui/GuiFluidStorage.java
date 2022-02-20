@@ -111,7 +111,7 @@ public class GuiFluidStorage extends GuiContainer implements IFluidSelectorGui {
 
 			for (int x = 0; x < 9; x++) {
 				for (int y = 0; y < 4; y++) {
-					int widgetIndex = y * 9 + x;
+					int widgetIndex = y * 9 + x  + this.currentScroll * 9;
 					if (0 <= widgetIndex && widgetIndex < listSize) {
 						this.fluidWidgets.get(widgetIndex).drawTooltip(
 								x * 18 + 7, y * 18 - 1, mouseX, mouseY);
@@ -123,9 +123,9 @@ public class GuiFluidStorage extends GuiContainer implements IFluidSelectorGui {
 
 			int deltaWheel = Mouse.getDWheel();
 			if (deltaWheel > 0) {
-				this.currentScroll++;
-			} else if (deltaWheel < 0) {
 				this.currentScroll--;
+			} else if (deltaWheel < 0) {
+				this.currentScroll++;
 			}
 
 			if (this.currentScroll < 0)
@@ -197,11 +197,11 @@ public class GuiFluidStorage extends GuiContainer implements IFluidSelectorGui {
 		this.searchbar.mouseClicked(mouseX, mouseY, mouseBtn);
 		int listSize = this.fluidWidgets.size();
 		for (int x = 0; x < 9; x++) {
-			for (int y = 0; y < 4; y++) {
+			for (int y = currentScroll; y < 4 + currentScroll; y++) {
 				int index = y * 9 + x;
 				if (0 <= index && index < listSize) {
 					AbstractFluidWidget widget = this.fluidWidgets.get(index);
-					widget.mouseClicked(x * 18 + 7, y * 18 - 1, mouseX, mouseY);
+					widget.mouseClicked(x * 18 + 7, (y - currentScroll) * 18 - 1, mouseX, mouseY);
 				}
 			}
 		}

@@ -56,6 +56,7 @@ public class WidgetFluidTank extends Gui {
 
 			IIcon fluidIcon = fluid.getFluid().getStillIcon();
 
+			GL11.glColor3f((fluid.getFluid().getColor() >> 16 & 0xFF) / 255.0F, (fluid.getFluid().getColor() >> 8 & 0xFF) / 255.0F, (fluid.getFluid().getColor() & 0xFF) / 255.0F);
 			if (iconHeightRemainder > 0) {
 				drawTexturedModelRectFromIcon(this.posX + 1, this.posY + 2,
 						fluidIcon, 16, iconHeightRemainder);
@@ -65,6 +66,7 @@ public class WidgetFluidTank extends Gui {
 						* 16 + iconHeightRemainder, fluidIcon, 16, 16);
 			}
 
+			GL11.glColor3f(1.0F, 1.0F, 1.0F);
 			Minecraft.getMinecraft().renderEngine
 					.bindTexture(new ResourceLocation("extracells",
 							"textures/gui/fluidtank.png"));

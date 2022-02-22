@@ -75,9 +75,7 @@ public class HandlerPartStorageFluid implements IMEInventoryHandler<IAEFluidStac
 
 	@Override
 	public IAEFluidStack extractItems(IAEFluidStack request, Actionable mode, BaseActionSource src) {
-		if (!this.node.isActive()
-				|| !(this.access == AccessRestriction.READ || this.access == AccessRestriction.READ_WRITE))
-			return null;
+		if (!this.node.isActive() || !(this.access == AccessRestriction.READ || this.access == AccessRestriction.READ_WRITE)) return null;
 		if (this.externalSystem != null && request != null) {
 			IStorageMonitorable monitor = this.externalSystem.getMonitorable(
 					this.node.getSide().getOpposite(), src);
@@ -99,23 +97,11 @@ public class HandlerPartStorageFluid implements IMEInventoryHandler<IAEFluidStac
 			return null;
 		FluidStack toDrain = request.getFluidStack();
 		int drained = 0;
-		int drained2 = 0;
-		do {
-			FluidStack drain = this.tank.drain(this.node.getSide().getOpposite(), new FluidStack(toDrain.getFluid(), toDrain.amount - drained), mode == Actionable.MODULATE);
-			if (drain == null)
-				drained2 = 0;
-			else
-				drained2 = drain.amount;
-			drained = drained + drained2;
-		} while (toDrain.amount != drained && drained2 != 0);
+		FluidStack drain = this.tank.drain(this.node.getSide().getOpposite(), new FluidStack(toDrain.getFluid(), toDrain.amount), mode == Actionable.MODULATE);
+		if (drain != null)
+			drained = drain.amount;
 		if (drained == 0)
 			return null;
-		IItemList<IAEFluidStack> fluids = getAvailableItems(AEApi.instance().storage().createFluidList());
-		for(IAEFluidStack fluid : fluids){
-			if(fluid.getFluid() == request.getFluid()){
-				drained = (int) Math.min(drained, fluid.getStackSize());
-			}
-		}
 
 		if (drained == toDrain.amount)
 			return request;
@@ -200,21 +186,7 @@ public class HandlerPartStorageFluid implements IMEInventoryHandler<IAEFluidStac
 		if (this.tank == null || input == null || !canAccept(input))
 			return input;
 		FluidStack toFill = input.getFluidStack();
-		int filled = 0;
-		int filled2 = 0;
-		do {
-			filled2 = this.tank.fill(this.node.getSide().getOpposite(), new FluidStack(toFill.getFluid(), toFill.amount - filled), mode == Actionable.MODULATE);
-			filled = filled + filled2;
-		} while (filled2 != 0 && filled != toFill.amount);
-		FluidTankInfo[] infos = this.tank.getTankInfo(this.node.getSide().getOpposite());
-		int maxFill = 0;
-		for(FluidTankInfo info : infos){
-			if(info.fluid == null)
-				maxFill += info.capacity;
-			else if(info.fluid.getFluid() == toFill.getFluid())
-				maxFill += info.capacity - info.fluid.amount;
-		}
-		filled = Math.min(filled, maxFill);
+		int filled = this.tank.fill(this.node.getSide().getOpposite(), new FluidStack(toFill.getFluid(), toFill.amount), mode == Actionable.MODULATE);
 		if (filled == toFill.amount)
 			return null;
 		return FluidUtil.createAEFluidStack(toFill.getFluidID(), toFill.amount - filled);

@@ -1,7 +1,8 @@
 package extracells.gui;
 
 import appeng.api.storage.data.IAEFluidStack;
-import extracells.Extracells;
+import codechicken.nei.recipe.GuiCraftingRecipe;
+import codechicken.nei.recipe.GuiUsageRecipe;
 import extracells.api.ECApi;
 import extracells.container.ContainerFluidTerminal;
 import extracells.gui.widget.FluidWidgetComparator;
@@ -9,14 +10,19 @@ import extracells.gui.widget.fluid.AbstractFluidWidget;
 import extracells.gui.widget.fluid.IFluidSelectorContainer;
 import extracells.gui.widget.fluid.IFluidSelectorGui;
 import extracells.gui.widget.fluid.WidgetFluidSelector;
+import extracells.integration.Integration;
 import extracells.network.packet.part.PacketFluidTerminal;
 import extracells.part.PartFluidTerminal;
+import extracells.registries.BlockEnum;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.IFluidContainerItem;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -58,22 +64,18 @@ public class GuiFluidTerminal extends GuiContainer implements IFluidSelectorGui 
 	@Override
 	protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
 		this.fontRendererObj.drawString(
-				StatCollector.translateToLocal("extracells.part.fluid.terminal.name").replace("ME ", ""), 9, 6, 0x000000);
+				"Fluid Terminal", 9, 6, 0x000000);
 		drawWidgets(mouseX, mouseY);
 		if (this.currentFluid != null) {
-			long currentFluidAmount = this.currentFluid.getStackSize();
-			String amountToText = Long.toString(currentFluidAmount) + "mB";
-			if (Extracells.shortenedBuckets()) {
-				if (currentFluidAmount > 1000000000L)
-					amountToText = Long
-							.toString(currentFluidAmount / 1000000000L) + "MegaB";
-				else if (currentFluidAmount > 1000000L)
-					amountToText = Long.toString(currentFluidAmount / 1000000L) + "KiloB";
-				else if (currentFluidAmount > 9999L) {
-					amountToText = Long.toString(currentFluidAmount / 1000L) + "B";
-				}
-			}
-
+			double currentFluidAmount = this.currentFluid.getStackSize();
+			String amountToText;
+			if (currentFluidAmount > 1000000000L)
+				amountToText = String.format("%.2f",currentFluidAmount/1000000000) + " MegaB";
+			else if (currentFluidAmount > 1000000L)
+				amountToText = String.format("%.2f",currentFluidAmount/1000000) + " KiloB";
+			else if(currentFluidAmount > 1000)
+				amountToText = String.format("%.2f",currentFluidAmount/1000) + " B";
+			else amountToText = String.format("%.0f",currentFluidAmount) + " mB";
 			this.fontRendererObj.drawString(
 					StatCollector.translateToLocal("extracells.tooltip.amount") + ": " + amountToText, 45, 91, 0x000000);
 			this.fontRendererObj.drawString(
@@ -117,8 +119,9 @@ public class GuiFluidTerminal extends GuiContainer implements IFluidSelectorGui 
 
 			if (this.currentScroll < 0)
 				this.currentScroll = 0;
-			if (listSize / 9 < 4 && this.currentScroll < listSize / 9 + 4)
-				this.currentScroll = 0;
+			int maxScroll = Math.max(0, (int)Math.ceil((double)listSize / 9) - 4);
+			if(this.currentScroll > maxScroll)
+				this.currentScroll = maxScroll;
 		}
 	}
 
@@ -152,24 +155,19 @@ public class GuiFluidTerminal extends GuiContainer implements IFluidSelectorGui 
 		Mouse.getDWheel();
 
 		updateFluids();
-		Collections.sort(this.fluidWidgets, new FluidWidgetComparator());
 		this.searchbar = new GuiTextField(this.fontRendererObj,
 				this.guiLeft + 81, this.guiTop + 6, 88, 10) {
 
-			private int xPos = 0;
-			private int yPos = 0;
-			private int width = 0;
-			private int height = 0;
-
 			@Override
 			public void mouseClicked(int x, int y, int mouseBtn) {
-				boolean flag = x >= this.xPos && x < this.xPos + this.width && y >= this.yPos && y < this.yPos + this.height;
-				if (flag && mouseBtn == 3)
-					setText("");
+				boolean withinXRange = this.xPosition <= x && x < this.xPosition + this.width;
+				boolean withinYRange = this.yPosition <= y && y < this.yPosition + this.height;
+				boolean flag = withinXRange && withinYRange;
+				if (flag && mouseBtn == 1) this.setText("");
+				this.setFocused(flag);
 			}
 		};
 		this.searchbar.setEnableBackgroundDrawing(false);
-		this.searchbar.setFocused(true);
 		this.searchbar.setMaxStringLength(15);
 	}
 
@@ -178,6 +176,20 @@ public class GuiFluidTerminal extends GuiContainer implements IFluidSelectorGui 
 		if (keyID == Keyboard.KEY_ESCAPE)
 			this.mc.thePlayer.closeScreen();
 		this.searchbar.textboxKeyTyped(key, keyID);
+		if(!this.searchbar.isFocused()){
+			if(Integration.Mods.NEI.isEnabled() && this.currentFluid != null) {
+				FluidStack currentFluidStack = this.currentFluid.getFluidStack();
+				currentFluidStack.amount = 1;
+				ItemStack fluidContainer = new ItemStack(BlockEnum.CERTUSTANK.getBlock());
+				((IFluidContainerItem)fluidContainer.getItem()).fill(fluidContainer, currentFluidStack, true);
+				if (keyID == Keyboard.KEY_R) {
+					GuiCraftingRecipe.openRecipeGui("item", fluidContainer);
+				} else if (keyID == Keyboard.KEY_U) {
+					GuiUsageRecipe.openRecipeGui("item", fluidContainer);
+				}
+			}
+			if (keyID == Keyboard.KEY_E ) this.mc.thePlayer.closeScreen();
+		}
 		updateFluids();
 	}
 
@@ -206,6 +218,7 @@ public class GuiFluidTerminal extends GuiContainer implements IFluidSelectorGui 
 			}
 		}
 		updateSelectedFluid();
+		Collections.sort(this.fluidWidgets, new FluidWidgetComparator());
 	}
 
 	public void updateSelectedFluid() {
